@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 from link_detector import find_links
 from ocr_core import SUPPORTED_IMAGE_SUFFIXES, detect_links_from_rows, run_ocr_on_image_path
 
-APP_TITLE = "本地 OCR 识别工具"
+APP_TITLE = "HuaShengOCR"
 
 
 class OCRWorker(QObject):

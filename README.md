@@ -1,8 +1,6 @@
 # HuaShengOCR
 
-# 本地 OCR 识别工具
-
-这是一个**纯本地运行**的 Python OCR 桌面小工具，使用 **PySide6 GUI**。
+HuaShengOCR 是一个**纯本地运行**的 Python OCR 桌面工具，使用 **PySide6 GUI**。
 
 ## 功能
 
@@ -52,7 +50,7 @@ chmod +x run.sh
 
 - 自动创建 `.venv` 虚拟环境（如果不存在）
 - 自动安装 `requirements.txt` 依赖
-- 自动启动本地 GUI 窗口
+- 自动启动 HuaShengOCR 桌面窗口
 
 ## 手动启动
 
