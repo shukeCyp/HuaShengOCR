@@ -2,6 +2,8 @@
 setlocal
 cd /d %~dp0
 
+echo HuaShengOCR 启动中...
+
 where python >nul 2>nul
 if %errorlevel%==0 (
     set PYTHON_BIN=python
@@ -17,17 +19,17 @@ if %errorlevel%==0 (
 )
 
 if not exist .venv (
-    echo [1/3] 创建虚拟环境...
+    echo [1/3] 为 HuaShengOCR 创建虚拟环境...
     %PYTHON_BIN% -m venv .venv
 )
 
 call .venv\Scripts\activate.bat
 
-echo [2/3] 安装/更新依赖...
+echo [2/3] 为 HuaShengOCR 安装/更新依赖...
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
-echo [3/3] 启动本地 OCR GUI...
+echo [3/3] 启动 HuaShengOCR 桌面应用...
 python main.py
 
 endlocal

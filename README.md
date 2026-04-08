@@ -72,6 +72,8 @@ python main.py
 
 ## 项目结构
 
+- `assets/huashengocr.png`：HuaShengOCR 应用图标
+
 - `main.py`：主入口
 - `app_gui.py`：PySide6 桌面 GUI
 - `ocr_core.py`：OCR 核心逻辑

@@ -4,6 +4,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+echo "HuaShengOCR 启动中..."
+
 PYTHON_BIN=""
 if command -v python3 >/dev/null 2>&1; then
   PYTHON_BIN="$(command -v python3)"
@@ -15,7 +17,7 @@ else
 fi
 
 if [ ! -d ".venv" ]; then
-  echo "[1/3] 创建虚拟环境..."
+  echo "[1/3] 为 HuaShengOCR 创建虚拟环境..."
   "$PYTHON_BIN" -m venv .venv
 fi
 
@@ -24,9 +26,9 @@ if [ -f ".venv/bin/activate" ]; then
   source .venv/bin/activate
 fi
 
-echo "[2/3] 安装/更新依赖..."
+echo "[2/3] 为 HuaShengOCR 安装/更新依赖..."
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
-echo "[3/3] 启动本地 OCR GUI..."
+echo "[3/3] 启动 HuaShengOCR 桌面应用..."
 python main.py

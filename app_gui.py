@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -26,6 +26,7 @@ from link_detector import find_links
 from ocr_core import SUPPORTED_IMAGE_SUFFIXES, detect_links_from_rows, run_ocr_on_image_path
 
 APP_TITLE = "HuaShengOCR"
+APP_ICON_PATH = Path(__file__).resolve().parent / "assets" / "huashengocr.png"
 
 
 class OCRWorker(QObject):
@@ -49,6 +50,8 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle(APP_TITLE)
+        if APP_ICON_PATH.exists():
+            self.setWindowIcon(QIcon(str(APP_ICON_PATH)))
         self.resize(1280, 860)
         self.selected_path: Path | None = None
         self.worker_thread: QThread | None = None
