@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>视频初审</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <section class="card hero">
+        <h1>视频初审</h1>
+        <p>把视频拖到浏览器里，浏览器会本地每秒抽一帧；每一帧再发给后端做 OCR，发现链接立即停止并判失败。</p>
+      </section>
+
+      <section class="card uploader">
+        <form id="video-form">
+          <label class="upload-box" id="video-dropzone" for="video-input">
+            <input id="video-input" name="file" type="file" accept="video/*" required />
+            <span id="video-dropzone-text">点击选择视频文件，或直接拖拽视频到这里</span>
+          </label>
+          <div id="video-file-meta" class="muted" style="margin: 12px 0 16px;">尚未选择视频</div>
+          <div class="muted" style="margin: 0 0 12px;">默认并发：4 路</div>
+          <div class="button-row">
+            <button id="video-submit-btn" type="submit">开始初审</button>
+            <button id="video-stop-btn" type="button" class="secondary-btn">停止</button>
+            <a href="/api-docs" class="doc-link-btn">查看 API 文档</a>
+          </div>
+        </form>
+      </section>
+
+      <section class="grid grid-review">
+        <div class="card preview-card">
+          <h2>统一进度</h2>
+          <div id="video-status" class="status">等待上传</div>
+          <div class="progress-wrap">
+            <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+            <div id="progress-meta" class="muted progress-meta">尚未开始</div>
+          </div>
+          <textarea id="video-summary" placeholder="审核摘要会显示在这里"></textarea>
+          <div class="frame-preview-wrap">
+            <div class="muted">最近处理帧</div>
+            <img id="current-frame-preview" class="frame-preview" alt="当前扫描帧" />
+          </div>
+        </div>
+
+        <div class="card result-card">
+          <h2>实时扫描结果</h2>
+          <div id="video-items"></div>
+          <details class="debug-box">
+            <summary>查看原始返回数据</summary>
+            <pre id="video-raw-json">尚无数据</pre>
+          </details>
+        </div>
+      </section>
+
+      <video id="hidden-video" style="display:none;" preload="metadata" playsinline muted></video>
+      <canvas id="hidden-canvas" style="display:none;"></canvas>
+    </main>
+
+    <script>
+      const form = document.getElementById('video-form');
+      const input = document.getElementById('video-input');
+      const statusEl = document.getElementById('video-status');
+      const summaryEl = document.getElementById('video-summary');
+      const itemsEl = document.getElementById('video-items');
+      const rawJsonEl = document.getElementById('video-raw-json');
+      const submitBtn = document.getElementById('video-submit-btn');
+      const stopBtn = document.getElementById('video-stop-btn');
+      const dropzone = document.getElementById('video-dropzone');
+      const dropzoneText = document.getElementById('video-dropzone-text');
+      const fileMetaEl = document.getElementById('video-file-meta');
+      const progressMetaEl = document.getElementById('progress-meta');
+      const progressFillEl = document.getElementById('progress-fill');
+      const currentFramePreviewEl = document.getElementById('current-frame-preview');
+      const hiddenVideo = document.getElementById('hidden-video');
+      const hiddenCanvas = document.getElementById('hidden-canvas');
+      const CONCURRENCY = 4;
+      let selectedFile = null;
+      let shouldStop = false;
+
+      function resetUIForRun() {
+        statusEl.textContent = '准备开始...';
+        progressMetaEl.textContent = '等待读取视频';
+        progressFillEl.style.width = '0%';
+        summaryEl.value = '';
+        itemsEl.innerHTML = '';
+        rawJsonEl.textContent = '处理中...';
+        currentFramePreviewEl.style.display = 'none';
+        currentFramePreviewEl.removeAttribute('src');
+      }
+
+      function setSelectedFile(file) {
+        selectedFile = file || null;
+        if (!file) {
+          fileMetaEl.textContent = '尚未选择视频';
+          dropzoneText.textContent = '点击选择视频文件，或直接拖拽视频到这里';
+          return;
+        }
+        fileMetaEl.textContent = `已选择：${file.name}（${(file.size / 1024 / 1024).toFixed(2)} MB）`;
+        dropzoneText.textContent = '视频已就绪，可以开始初审';
+      }
+
+      function setPreview(url) {
+        if (!url) return;
+        currentFramePreviewEl.src = url;
+        currentFramePreviewEl.style.display = 'block';
+      }
+
+      function formatEta(seconds) {
+        if (!Number.isFinite(seconds) || seconds < 0) return '预计剩余时间：--';
+        if (seconds < 60) return `预计剩余时间：${Math.round(seconds)}s`;
+        const m = Math.floor(seconds / 60);
+        const s = Math.round(seconds % 60);
+        return `预计剩余时间：${m}m ${s}s`;
+      }
+
+      function appendProgressCard(payload) {
+        const div = document.createElement('div');
+        div.className = `ocr-item ${payload.matched ? 'hit-card' : ''}`;
+        div.innerHTML = `
+          <div class="ocr-item-head">第 ${payload.second}s <span>${payload.frames_scanned}/${payload.frames_total}</span></div>
+          ${payload.preview_url ? `<img class="hit-preview" src="${payload.preview_url}" alt="frame preview" />` : ''}
+          <div class="ocr-text"><strong>OCR：</strong>${payload.text || '（空）'}</div>
+          <div class="ocr-text"><strong>链接命中：</strong>${payload.links?.length ? payload.links.join(', ') : '无'}</div>
+        `;
+        itemsEl.prepend(div);
+      }
+
+      function waitForEvent(target, eventName) {
+        return new Promise((resolve) => {
+          const handler = () => {
+            target.removeEventListener(eventName, handler);
+            resolve();
+          };
+          target.addEventListener(eventName, handler);
+        });
+      }
+
+      async function loadVideo(file) {
+        const objectUrl = URL.createObjectURL(file);
+        hiddenVideo.src = objectUrl;
+        hiddenVideo.load();
+        await waitForEvent(hiddenVideo, 'loadedmetadata');
+        return objectUrl;
+      }
+
+      async function seekAndCaptureAt(second) {
+        await new Promise((resolve, reject) => {
+          const onSeeked = () => resolve();
+          const onError = () => reject(new Error('视频 seek 失败'));
+          hiddenVideo.addEventListener('seeked', onSeeked, { once: true });
+          hiddenVideo.addEventListener('error', onError, { once: true });
+          hiddenVideo.currentTime = Math.min(second - 1, Math.max(hiddenVideo.duration - 0.05, 0));
+        });
+        const width = hiddenVideo.videoWidth;
+        const height = hiddenVideo.videoHeight;
+        hiddenCanvas.width = width;
+        hiddenCanvas.height = height;
+        const ctx = hiddenCanvas.getContext('2d');
+        ctx.drawImage(hiddenVideo, 0, 0, width, height);
+        const previewUrl = hiddenCanvas.toDataURL('image/jpeg', 0.85);
+        const blob = await new Promise((resolve) => hiddenCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+        return { blob, previewUrl };
+      }
+
+      async function ocrFrame(blob, second) {
+        const formData = new FormData();
+        formData.append('file', blob, `frame_${String(second).padStart(6, '0')}.jpg`);
+        formData.append('second', String(second));
+        const resp = await fetch('/api/video-review/frame-check', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || '帧检查失败');
+        return data;
+      }
+
+      async function processSecond(second, duration) {
+        const { blob, previewUrl } = await seekAndCaptureAt(second);
+        const ocrData = await ocrFrame(blob, second);
+        return {
+          second,
+          preview_url: previewUrl,
+          text: ocrData.text || '',
+          links: ocrData.links || [],
+          matched: !!ocrData.matched,
+          frames_total: duration,
+          raw: ocrData,
+        };
+      }
+
+      async function runBrowserFrameReview(file) {
+        shouldStop = false;
+        resetUIForRun();
+        submitBtn.disabled = true;
+        const startedAt = performance.now();
+        let objectUrl = null;
+        let processed = 0;
+        let hitFound = false;
+
+        try {
+          objectUrl = await loadVideo(file);
+          const duration = Math.max(Math.floor(hiddenVideo.duration), 1);
+          statusEl.textContent = '审核中...';
+          progressMetaEl.textContent = `视频时长约 ${duration}s，前端并发 ${CONCURRENCY} 路`;
+
+          let nextSecond = 1;
+          const workers = Array.from({ length: Math.min(CONCURRENCY, duration) }, async () => {
+            while (!shouldStop && !hitFound && nextSecond <= duration) {
+              const current = nextSecond++;
+              const result = await processSecond(current, duration);
+              processed += 1;
+              const elapsedSeconds = (performance.now() - startedAt) / 1000;
+              const progress = processed / duration;
+              const etaSeconds = (elapsedSeconds / Math.max(processed, 1)) * (duration - processed);
+              const payload = {
+                ...result,
+                frames_scanned: processed,
+                progress,
+                eta_seconds: etaSeconds,
+              };
+
+              setPreview(payload.preview_url);
+              progressFillEl.style.width = `${Math.max(2, progress * 100)}%`;
+              progressMetaEl.textContent = `正在扫描第 ${payload.second}s（${processed}/${duration}） · ${formatEta(etaSeconds)} · 并发 ${CONCURRENCY}`;
+              summaryEl.value = payload.text || '';
+              rawJsonEl.textContent = JSON.stringify(payload, null, 2);
+              appendProgressCard(payload);
+
+              if (payload.matched) {
+                hitFound = true;
+                statusEl.textContent = '审核失败';
+                progressFillEl.style.width = '100%';
+                progressMetaEl.textContent = `第 ${payload.second}s 检测到链接`;
+                summaryEl.value = `审核失败\n首次命中秒数: ${payload.second}\n命中链接: ${payload.links.join(', ')}`;
+                break;
+              }
+            }
+          });
+
+          await Promise.all(workers);
+
+          if (shouldStop) {
+            statusEl.textContent = '已停止';
+            progressMetaEl.textContent = '任务已手动停止';
+          } else if (!hitFound) {
+            statusEl.textContent = '审核通过';
+            progressFillEl.style.width = '100%';
+            progressMetaEl.textContent = `视频中未检测到链接 · 并发 ${CONCURRENCY}`;
+            summaryEl.value = `审核通过\n已扫描 ${duration} 秒\n前端并发 ${CONCURRENCY} 路`;
+          }
+        } finally {
+          submitBtn.disabled = false;
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+        }
+      }
+
+      input.addEventListener('change', () => {
+        const file = input.files?.[0];
+        setSelectedFile(file);
+      });
+
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        dropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add('dragover');
+        });
+      });
+
+      ['dragleave', 'dragend', 'drop'].forEach((eventName) => {
+        dropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove('dragover');
+        });
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer?.files;
+        if (!files || !files.length) return;
+        const file = files[0];
+        if (!file.type.startsWith('video/')) {
+          alert('请拖入视频文件');
+          return;
+        }
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        setSelectedFile(file);
+      });
+
+      stopBtn.addEventListener('click', () => {
+        shouldStop = true;
+      });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const file = input.files?.[0] || selectedFile;
+        if (!file) {
+          alert('请先选择视频');
+          return;
+        }
+        try {
+          await runBrowserFrameReview(file);
+        } catch (err) {
+          statusEl.textContent = '审核失败';
+          progressMetaEl.textContent = '浏览器抽帧失败';
+          summaryEl.value = err.message || '审核失败';
+          itemsEl.innerHTML = `<div class="error">${err.message}</div>`;
+          rawJsonEl.textContent = err.message || '审核失败';
+          submitBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

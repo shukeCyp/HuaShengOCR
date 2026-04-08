@@ -1,0 +1,281 @@
+:root {
+  color-scheme: light;
+  --bg: #f6f8fb;
+  --card: #ffffff;
+  --line: #dbe3ef;
+  --text: #18212f;
+  --muted: #687588;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+  color: var(--text);
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.hero h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+}
+
+.hero p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.uploader {
+  margin-top: 20px;
+}
+
+.upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  border: 2px dashed #9ab4e5;
+  border-radius: 16px;
+  cursor: pointer;
+  background: #f9fbff;
+  color: var(--muted);
+  margin-bottom: 16px;
+  transition: all 0.18s ease;
+  text-align: center;
+  padding: 16px;
+}
+
+.upload-box.dragover {
+  border-color: var(--primary);
+  background: #eef4ff;
+  color: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.upload-box input {
+  display: none;
+}
+
+button {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--primary-dark);
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.secondary-btn {
+  background: #475569;
+}
+
+.secondary-btn:hover {
+  background: #334155;
+}
+
+.doc-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: #eef4ff;
+  color: #1d4ed8;
+  text-decoration: none;
+  border: 1px solid #c7d7fe;
+}
+
+.doc-link-btn:hover {
+  background: #dbeafe;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.preview-card img {
+  max-width: 100%;
+  border-radius: 12px;
+  display: none;
+}
+
+.placeholder {
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+}
+
+.result-card textarea {
+  width: 100%;
+  min-height: 180px;
+  margin: 12px 0 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 12px;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.status {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.ocr-item {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #fbfdff;
+}
+
+.hit-card {
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
+.grid-review {
+  align-items: start;
+}
+
+.progress-wrap {
+  margin: 12px 0 16px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  background: #e5edf8;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb 0%, #60a5fa 100%);
+  transition: width 0.25s ease;
+}
+
+.progress-meta {
+  margin-top: 10px;
+}
+
+.frame-preview-wrap {
+  margin-top: 12px;
+}
+
+.frame-preview,
+.hit-preview {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  margin-top: 10px;
+  display: block;
+  background: #f8fafc;
+}
+
+.frame-preview {
+  display: none;
+  min-height: 120px;
+}
+
+.hit-preview {
+  margin-bottom: 10px;
+}
+
+.ocr-item-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.ocr-text {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.debug-box {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.debug-box summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.debug-box pre {
+  margin-top: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px;
+  border-radius: 12px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 800px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

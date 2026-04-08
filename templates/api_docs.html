@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API 文档</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <section class="card hero">
+        <h1>API 文档</h1>
+        <p>这是给前端/集成方看的页面版接口文档。Swagger 文档也可用。</p>
+        <p>
+          <a href="/docs">打开 Swagger UI</a>
+          ·
+          <a href="/openapi.json">查看 OpenAPI JSON</a>
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>1. 健康检查</h2>
+        <div class="ocr-text"><strong>GET</strong> /health</div>
+        <pre class="doc-pre">{
+  "ok": true,
+  "engine": "OnnxOCR"
+}</pre>
+      </section>
+
+      <section class="card">
+        <h2>2. 单图 OCR</h2>
+        <div class="ocr-text"><strong>POST</strong> /api/ocr</div>
+        <div class="ocr-text">上传一张图片，返回 OCR 文本与坐标框。</div>
+        <pre class="doc-pre">curl -X POST /api/ocr \
+  -F "file=@demo.jpg"</pre>
+      </section>
+
+      <section class="card">
+        <h2>3. 视频单帧检查</h2>
+        <div class="ocr-text"><strong>POST</strong> /api/video-review/frame-check</div>
+        <div class="ocr-text">适用于浏览器本地抽帧模式：每秒抽一帧，再把当前帧发给后端判断是否包含链接。</div>
+        <pre class="doc-pre">curl -X POST /api/video-review/frame-check \
+  -F "file=@frame_001.jpg" \
+  -F "second=12"</pre>
+        <pre class="doc-pre">{
+  "success": true,
+  "passed": false,
+  "second": 12,
+  "text": "访问 www.example.com",
+  "links": ["www.example.com"],
+  "matched": true,
+  "count": 1,
+  "items": []
+}</pre>
+      </section>
+
+      <section class="card">
+        <h2>4. 后端整段视频审核任务</h2>
+        <div class="ocr-text"><strong>POST</strong> /api/video-review/tasks</div>
+        <div class="ocr-text">上传整段视频，交给后端每秒抽帧处理。当前页面主流程已改为浏览器本地抽帧，但这个接口仍保留。</div>
+      </section>
+    </main>
+  </body>
+</html>

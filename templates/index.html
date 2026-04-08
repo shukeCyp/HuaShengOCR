@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OnnxOCR Demo</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <section class="card hero">
+        <h1>OnnxOCR 网页版</h1>
+        <p>上传一张图片，后端会调用 OnnxOCR 识别文字并返回结果。</p>
+      </section>
+
+      <section class="card uploader">
+        <form id="ocr-form">
+          <label class="upload-box" for="file-input">
+            <input id="file-input" name="file" type="file" accept="image/*" required />
+            <span>点击选择图片或直接拖进来</span>
+          </label>
+          <button id="submit-btn" type="submit">开始识别</button>
+        </form>
+        <div style="margin-top: 14px; color: #687588;">
+          需要视频初审？<a href="/video-review">点击进入视频初审页面</a>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="card preview-card">
+          <h2>图片预览</h2>
+          <img id="preview" alt="预览图" />
+          <div id="empty-preview" class="placeholder">尚未选择图片</div>
+        </div>
+
+        <div class="card result-card">
+          <h2>识别结果</h2>
+          <div id="status" class="status">等待上传</div>
+          <textarea id="full-text" placeholder="完整识别文本会显示在这里"></textarea>
+          <div id="items"></div>
+          <details class="debug-box">
+            <summary>查看原始返回数据</summary>
+            <pre id="raw-json">尚无数据</pre>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById('ocr-form');
+      const input = document.getElementById('file-input');
+      const preview = document.getElementById('preview');
+      const emptyPreview = document.getElementById('empty-preview');
+      const statusEl = document.getElementById('status');
+      const fullTextEl = document.getElementById('full-text');
+      const itemsEl = document.getElementById('items');
+      const submitBtn = document.getElementById('submit-btn');
+      const rawJsonEl = document.getElementById('raw-json');
+
+      function renderPreview(file) {
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        preview.src = url;
+        preview.style.display = 'block';
+        emptyPreview.style.display = 'none';
+      }
+
+      function renderItems(items) {
+        itemsEl.innerHTML = '';
+        if (!items || !items.length) {
+          itemsEl.innerHTML = '<div class="muted">没有识别到文字</div>';
+          return;
+        }
+
+        items.forEach((item, index) => {
+          const div = document.createElement('div');
+          div.className = 'ocr-item';
+          div.innerHTML = `
+            <div class="ocr-item-head">#${index + 1} <span>${(item.score ?? 0).toFixed(4)}</span></div>
+            <div class="ocr-text">${item.text || ''}</div>
+          `;
+          itemsEl.appendChild(div);
+        });
+      }
+
+      input.addEventListener('change', () => {
+        const file = input.files?.[0];
+        if (file) renderPreview(file);
+      });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const file = input.files?.[0];
+        if (!file) {
+          alert('请先选择图片');
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        submitBtn.disabled = true;
+        statusEl.textContent = '识别中...';
+        fullTextEl.value = '';
+        itemsEl.innerHTML = '';
+        rawJsonEl.textContent = '识别中...';
+
+        try {
+          const resp = await fetch('/api/ocr', {
+            method: 'POST',
+            body: formData,
+          });
+          const data = await resp.json();
+
+          if (!resp.ok) {
+            throw new Error(data.detail || '识别失败');
+          }
+
+          statusEl.textContent = data.count > 0 ? `识别完成，共 ${data.count} 条结果` : '识别完成，但没有识别到文字';
+          fullTextEl.value = data.full_text || '';
+          rawJsonEl.textContent = JSON.stringify(data, null, 2);
+          renderItems(data.items || []);
+        } catch (err) {
+          statusEl.textContent = '识别失败';
+          itemsEl.innerHTML = `<div class="error">${err.message}</div>`;
+          rawJsonEl.textContent = err.message || '识别失败';
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
